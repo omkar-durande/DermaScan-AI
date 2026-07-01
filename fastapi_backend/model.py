@@ -861,6 +861,7 @@ def threshold_check(probs, conf_threshold, entropy_threshold):
 
 
 def load_disease_model(model_path, device):
+    global CLASS_NAMES
     ckpt = torch.load(model_path, map_location=device, weights_only=False)
     
     # Dynamically determine the number of classes from checkpoint weights
@@ -877,7 +878,6 @@ def load_disease_model(model_path, device):
     m.eval()
     
     # Update global CLASS_NAMES to match checkpoint
-    global CLASS_NAMES
     if "class_names" in ckpt:
         CLASS_NAMES = ckpt["class_names"]
         
