@@ -78,12 +78,25 @@ CLASS_NAMES = ["NEV", "BCC", "ACK", "SEK", "SCC", "MEL"]
 LABEL_MAP   = {name: i for i, name in enumerate(CLASS_NAMES)}
 
 CLASS_INFO = {
+    # 6 original classes
     "NEV": {"full_name": "Melanocytic Nevus",              "severity": "low"},
     "BCC": {"full_name": "Basal Cell Carcinoma",            "severity": "high"},
     "ACK": {"full_name": "Actinic Keratosis",               "severity": "moderate"},
     "SEK": {"full_name": "Seborrheic Keratosis",            "severity": "low"},
     "SCC": {"full_name": "Squamous Cell Carcinoma",         "severity": "high"},
     "MEL": {"full_name": "Melanoma",                        "severity": "critical"},
+    
+    # 10 classes from new model (mapped by display name)
+    "Melanoma": {"full_name": "Melanoma", "severity": "critical"},
+    "Melanocytic Nevi (Moles)": {"full_name": "Melanocytic Nevi (Moles)", "severity": "low"},
+    "Basal Cell Carcinoma": {"full_name": "Basal Cell Carcinoma", "severity": "high"},
+    "Actinic Keratosis": {"full_name": "Actinic Keratosis", "severity": "moderate"},
+    "Benign Keratosis": {"full_name": "Benign Keratosis", "severity": "low"},
+    "Dermatofibroma": {"full_name": "Dermatofibroma", "severity": "low"},
+    "Vascular Lesions": {"full_name": "Vascular Lesions", "severity": "low"},
+    "Eczema / Dermatitis": {"full_name": "Eczema / Dermatitis", "severity": "moderate"},
+    "Psoriasis": {"full_name": "Psoriasis", "severity": "moderate"},
+    "Tinea / Fungal Infection": {"full_name": "Tinea / Fungal Infection", "severity": "low"}
 }
 
 
@@ -849,9 +862,25 @@ def threshold_check(probs, conf_threshold, entropy_threshold):
 
 def load_disease_model(model_path, device):
     ckpt = torch.load(model_path, map_location=device, weights_only=False)
-    m    = build_disease_model(len(CLASS_NAMES), device, pretrained=False)
-    m.load_state_dict(ckpt["model_state"])
+    
+    # Dynamically determine the number of classes from checkpoint weights
+    model_state = ckpt["model_state"]
+    if "classifier.5.bias" in model_state:
+        num_classes = model_state["classifier.5.bias"].shape[0]
+    elif "classifier.5.weight" in model_state:
+        num_classes = model_state["classifier.5.weight"].shape[0]
+    else:
+        num_classes = len(ckpt.get("class_names", CLASS_NAMES))
+        
+    m = build_disease_model(num_classes, device, pretrained=False)
+    m.load_state_dict(model_state)
     m.eval()
+    
+    # Update global CLASS_NAMES to match checkpoint
+    global CLASS_NAMES
+    if "class_names" in ckpt:
+        CLASS_NAMES = ckpt["class_names"]
+        
     thresholds = {
         "conf"    : ckpt.get("conf_threshold",    0.55),
         "entropy" : ckpt.get("entropy_threshold", 1.3),
@@ -964,6 +993,20 @@ class SkinDiseaseModel:
         if not self.loaded:
             raise RuntimeError("Model not loaded. Call load() first.")
 
+        # Map long class names from checkpoint to clean, short API codes
+        MAP_LONG_TO_SHORT = {
+            "Melanoma": "MEL",
+            "Melanocytic Nevi (Moles)": "NEV",
+            "Basal Cell Carcinoma": "BCC",
+            "Actinic Keratosis": "ACK",
+            "Benign Keratosis": "SEK",
+            "Dermatofibroma": "DF",
+            "Vascular Lesions": "VASC",
+            "Eczema / Dermatitis": "Eczema",
+            "Psoriasis": "Psoriasis",
+            "Tinea / Fungal Infection": "Fungal"
+        }
+
         # Gate 1 — binary OOD check
         if not ood_binary_check(self.ood_model, image, self.device):
             return {
@@ -971,7 +1014,7 @@ class SkinDiseaseModel:
                 "disease_name": "Out of Domain / Not Skin",
                 "severity": "low",
                 "confidence": 0.0,
-                "all_scores": {n: 0.0 for n in CLASS_NAMES},
+                "all_scores": {MAP_LONG_TO_SHORT.get(n, n): 0.0 for n in CLASS_NAMES},
                 "is_skin": False,
                 "message": "Rejected: image does not appear to be a skin lesion.",
             }
@@ -990,28 +1033,28 @@ class SkinDiseaseModel:
         if not threshold_check(probs, self.thresholds["conf"], self.thresholds["entropy"]):
             top_idx = probs.argmax().item()
             top_class = CLASS_NAMES[top_idx]
-            info = CLASS_INFO[top_class]
+            info = CLASS_INFO.get(top_class, {"full_name": top_class, "severity": "moderate"})
             return {
                 "predicted_class": "UNCERTAIN",
                 "disease_name": "Uncertain / Low Confidence",
                 "severity": "low",
                 "confidence": round(probs[top_idx].item(), 4),
-                "all_scores": {n: round(probs[i].item(), 4) for i, n in enumerate(CLASS_NAMES)},
+                "all_scores": {MAP_LONG_TO_SHORT.get(n, n): round(probs[i].item(), 4) for i, n in enumerate(CLASS_NAMES)},
                 "is_skin": False,
                 "message": f"Rejected: model confidence too low for a diagnosis. Most likely: {info['full_name']} ({probs[top_idx].item():.1%})",
             }
 
         top_idx = probs.argmax().item()
         top_class = CLASS_NAMES[top_idx]
-        info = CLASS_INFO[top_class]
+        info = CLASS_INFO.get(top_class, {"full_name": top_class, "severity": "moderate"})
 
         return {
-            "predicted_class": top_class,
+            "predicted_class": MAP_LONG_TO_SHORT.get(top_class, top_class),
             "disease_name": info["full_name"],
             "severity": info["severity"],
             "confidence": round(probs[top_idx].item(), 4),
             "all_scores": {
-                name: round(probs[i].item(), 4)
+                MAP_LONG_TO_SHORT.get(name, name): round(probs[i].item(), 4)
                 for i, name in enumerate(CLASS_NAMES)
             },
             "is_skin": True,

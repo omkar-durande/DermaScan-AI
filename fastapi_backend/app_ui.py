@@ -135,10 +135,15 @@ if uploaded:
         "SEK": "Seborrheic Keratosis",
         "SCC": "Squamous Cell Carcinoma",
         "MEL": "Melanoma",
+        "DF": "Dermatofibroma",
+        "VASC": "Vascular Lesions",
+        "Eczema": "Eczema / Dermatitis",
+        "Psoriasis": "Psoriasis",
+        "Fungal": "Tinea / Fungal Infection"
     }
 
     for code, score in sorted_scores:
-        label = f"{code} — {CLASS_FULL[code]}"
+        label = f"{code} — {CLASS_FULL.get(code, code)}"
         st.progress(score, text=f"{label}:  **{score:.2%}**")
 
     # ── Disclaimer ─────────────────────────────────────────────────
