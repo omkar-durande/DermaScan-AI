@@ -877,9 +877,12 @@ def load_disease_model(model_path, device):
     m.load_state_dict(model_state)
     m.eval()
     
-    # Update global CLASS_NAMES to match checkpoint
+    # Update global CLASS_NAMES and LABEL_MAP to match checkpoint
     if "class_names" in ckpt:
-        CLASS_NAMES = ckpt["class_names"]
+        CLASS_NAMES.clear()
+        CLASS_NAMES.extend(ckpt["class_names"])
+        LABEL_MAP.clear()
+        LABEL_MAP.update({name: i for i, name in enumerate(CLASS_NAMES)})
         
     thresholds = {
         "conf"    : ckpt.get("conf_threshold",    0.55),
