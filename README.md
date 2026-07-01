@@ -20,16 +20,18 @@
 ## 📱 App Screenshots
 
 <p align="center">
-  <img src="./fastapi_backend/screenshots/01_hospitals_list.jpg" width="18%" alt="Nearby Hospitals List"/>
-  <img src="./fastapi_backend/screenshots/02_uv_exposure.jpg" width="18%" alt="UV Exposure"/>
-  <img src="./fastapi_backend/screenshots/03_hospitals_map.jpg" width="18%" alt="Hospitals Map"/>
-  <img src="./fastapi_backend/screenshots/04_home_remedies.jpg" width="18%" alt="Home Remedies"/>
-  <img src="./fastapi_backend/screenshots/05_remedy_detail.jpg" width="18%" alt="Remedy Detail"/>
+  <img src="./fastapi_backend/screenshots/07_home.jpg" width="22%" alt="Home Dashboard"/>
+  <img src="./fastapi_backend/screenshots/08_results.jpg" width="22%" alt="Scan Result"/>
+  <img src="./fastapi_backend/screenshots/06_chat.jpg" width="22%" alt="AI Chat Assistant"/>
+  <img src="./fastapi_backend/screenshots/02_uv_exposure.jpg" width="22%" alt="UV Exposure Tracker"/>
 </p>
 
-| Nearby Hospitals | UV Exposure | Hospitals Map | Home Remedies | Remedy Detail |
-|:---:|:---:|:---:|:---:|:---:|
-| 64 hospitals & clinics | Live UV index | OpenStreetMap | Severity-tagged | Step-by-step |
+<p align="center">
+  <img src="./fastapi_backend/screenshots/01_hospitals_list.jpg" width="22%" alt="Nearby Hospitals List"/>
+  <img src="./fastapi_backend/screenshots/03_hospitals_map.jpg" width="22%" alt="Hospitals Map"/>
+  <img src="./fastapi_backend/screenshots/04_home_remedies.jpg" width="22%" alt="Home Remedies"/>
+  <img src="./fastapi_backend/screenshots/05_remedy_detail.jpg" width="22%" alt="Remedy Detail"/>
+</p>
 
 ---
 
@@ -50,7 +52,7 @@ DermaScan-AI/
 │   ├── lib/
 │   │   ├── main.dart
 │   │   ├── screens/              # All UI screens
-│   │   ├── services/             # Firebase, API, PDF, Gemini AI
+│   │   ├── services/             # Firebase, API, PDF, Pollinations AI
 │   │   ├── providers/            # State management
 │   │   ├── models/               # Data models
 │   │   └── widgets/              # Reusable components
@@ -80,7 +82,7 @@ DermaScan-AI/
 | 🏥 **Nearby Hospitals** | Map + list of hospitals & clinics by distance |
 | 🌞 **UV Exposure** | Live UV index with sun protection advice |
 | 💊 **Home Remedies** | Condition-specific remedy suggestions |
-| 🤖 **AI Chat** | Gemini-powered dermatology assistant |
+| 🤖 **AI Chat** | Pollinations AI-powered free assistant chatbot |
 | 📋 **Scan History** | Full scan log with confidence scores |
 | 📄 **PDF Export** | Generate shareable medical report PDFs |
 
@@ -145,7 +147,7 @@ docker run -p 7860:7860 dermascan-api
 | AI Model | EfficientNet-B3, PyTorch 2.4 |
 | Auth & DB | Firebase Auth, Firestore |
 | Maps | flutter_map (OpenStreetMap) |
-| AI Chat | Google Gemini API |
+| AI Chat | Pollinations AI (Free Text API) |
 | Hosting | HuggingFace Spaces, Docker |
 
 ---
