@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "395775491353",
+    "project_id": "dermascan-ai-57293",
+    "storage_bucket": "dermascan-ai-57293.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395775491353:android:42d46a1b37e71898889988",
+        "android_client_info": {
+          "package_name": "com.dermascan.dermascan_ai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "395775491353-nt64tokcrgulkd3uhqfd6qtb8jt9ehbh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dermascan.dermascan_ai",
+            "certificate_hash": "9132c4efdac4d26ca476ca4eff1cb38e2acb4c52"
+          }
+        },
+        {
+          "client_id": "395775491353-o32pna8ki2mahuib8dv7fiit5s68pg1e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiRpxNp06QJHnf7O0bbFixFTm3y6EBozM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "395775491353-o32pna8ki2mahuib8dv7fiit5s68pg1e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

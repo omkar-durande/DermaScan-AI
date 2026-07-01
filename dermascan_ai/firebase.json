@@ -1,0 +1,25 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dermascan-ai-57293",
+          "appId": "1:395775491353:android:42d46a1b37e71898889988",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dermascan-ai-57293",
+          "configurations": {
+            "android": "1:395775491353:android:42d46a1b37e71898889988"
+          }
+        }
+      }
+    }
+  }
+}

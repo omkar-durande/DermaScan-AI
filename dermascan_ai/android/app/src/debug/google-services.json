@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "395775491353",
+    "project_id": "dermascan-ai-57293",
+    "storage_bucket": "dermascan-ai-57293.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395775491353:android:42d46a1b37e71898889988",
+        "android_client_info": {
+          "package_name": "com.dermascan.dermascan_ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiRpxNp06QJHnf7O0bbFixFTm3y6EBozM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
