@@ -77,6 +77,15 @@ CONFIG = {
 CLASS_NAMES = ["NEV", "BCC", "ACK", "SEK", "SCC", "MEL"]
 LABEL_MAP   = {name: i for i, name in enumerate(CLASS_NAMES)}
 
+CLASS_INFO = {
+    "NEV": {"full_name": "Melanocytic Nevus",              "severity": "low"},
+    "BCC": {"full_name": "Basal Cell Carcinoma",            "severity": "high"},
+    "ACK": {"full_name": "Actinic Keratosis",               "severity": "moderate"},
+    "SEK": {"full_name": "Seborrheic Keratosis",            "severity": "low"},
+    "SCC": {"full_name": "Squamous Cell Carcinoma",         "severity": "high"},
+    "MEL": {"full_name": "Melanoma",                        "severity": "critical"},
+}
+
 
 def set_seed(seed):
     random.seed(seed)
@@ -906,6 +915,112 @@ def predict_image(model, ood_model, image_path, thresholds,
                        for i, n in enumerate(CLASS_NAMES)},
         "is_skin"   : True,
     }
+# ─────────────────────────────────────────────
+# 14. SINGLETON MODEL HOLDER
+# ─────────────────────────────────────────────
+
+class SkinDiseaseModel:
+    """Loads the trained checkpoint once and exposes a predict method."""
+
+    def __init__(self):
+        self.model: nn.Module | None = None
+        self.ood_model: nn.Module | None = None
+        self.thresholds = {
+            "conf": 0.55,
+            "entropy": 1.3,
+            "img_size": 300,
+        }
+        self.device: str = "cpu"
+        self.loaded: bool = False
+
+    def load(self, model_path: str, device: str = "cpu") -> None:
+        """Load the disease model and OOD classifier if available."""
+        self.device = device
+        
+        # Load main disease model
+        self.model, self.thresholds = load_disease_model(model_path, device)
+        
+        # Try loading OOD classifier if present
+        dir_name = os.path.dirname(model_path)
+        ood_path = os.path.join(dir_name, "ood_classifier.pth")
+        if not os.path.exists(ood_path):
+            ood_path = os.path.join(dir_name, "skin_model_outputs", "ood_classifier.pth")
+            
+        if os.path.exists(ood_path):
+            self.ood_model = load_ood_classifier(ood_path, device)
+            print(f"  ✓ OOD Classifier loaded from {ood_path}")
+        else:
+            self.ood_model = None
+            print("  ℹ No OOD Classifier found; relying on confidence/entropy threshold checks.")
+            
+        self.loaded = True
+        print(f"  ✓ SkinDiseaseModel loaded successfully on {device}")
+
+    def predict(self, image: Image.Image) -> dict:
+        """
+        Run inference on a PIL Image.
+        Returns a dictionary formatted for the API and Streamlit UI.
+        """
+        if not self.loaded:
+            raise RuntimeError("Model not loaded. Call load() first.")
+
+        # Gate 1 — binary OOD check
+        if not ood_binary_check(self.ood_model, image, self.device):
+            return {
+                "predicted_class": "OOD",
+                "disease_name": "Out of Domain / Not Skin",
+                "severity": "low",
+                "confidence": 0.0,
+                "all_scores": {n: 0.0 for n in CLASS_NAMES},
+                "is_skin": False,
+                "message": "Rejected: image does not appear to be a skin lesion.",
+            }
+
+        img_size = self.thresholds["img_size"]
+        tf_list = get_tta_transforms(img_size)
+
+        all_probs = []
+        for tf in tf_list:
+            tensor = tf(image).unsqueeze(0).to(self.device)
+            with torch.no_grad():
+                all_probs.append(torch.softmax(self.model(tensor), dim=1)[0])
+        probs = torch.stack(all_probs).mean(0)
+
+        # Gate 2 — confidence/entropy threshold check
+        if not threshold_check(probs, self.thresholds["conf"], self.thresholds["entropy"]):
+            top_idx = probs.argmax().item()
+            top_class = CLASS_NAMES[top_idx]
+            info = CLASS_INFO[top_class]
+            return {
+                "predicted_class": "UNCERTAIN",
+                "disease_name": "Uncertain / Low Confidence",
+                "severity": "low",
+                "confidence": round(probs[top_idx].item(), 4),
+                "all_scores": {n: round(probs[i].item(), 4) for i, n in enumerate(CLASS_NAMES)},
+                "is_skin": False,
+                "message": f"Rejected: model confidence too low for a diagnosis. Most likely: {info['full_name']} ({probs[top_idx].item():.1%})",
+            }
+
+        top_idx = probs.argmax().item()
+        top_class = CLASS_NAMES[top_idx]
+        info = CLASS_INFO[top_class]
+
+        return {
+            "predicted_class": top_class,
+            "disease_name": info["full_name"],
+            "severity": info["severity"],
+            "confidence": round(probs[top_idx].item(), 4),
+            "all_scores": {
+                name: round(probs[i].item(), 4)
+                for i, name in enumerate(CLASS_NAMES)
+            },
+            "is_skin": True,
+        }
+
+
+# ── Module-level singleton ─────────────────────────────────────────
+
+skin_model = SkinDiseaseModel()
 
 
 # ─────────────────────────────────────────────
