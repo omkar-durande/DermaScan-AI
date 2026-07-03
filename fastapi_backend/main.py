@@ -179,11 +179,7 @@ async def predict(file: UploadFile = File(...)):
     result = skin_model.predict(image)
     inference_ms = round((time.time() - start) * 1000, 1)
 
-    if not result.get("is_skin", True):
-        raise HTTPException(
-            status_code=400,
-            detail=result.get("message", "Rejected: image does not appear to be a skin lesion.")
-        )
+    # Do not reject image even if is_skin is False
 
     return JSONResponse(content={
         "success": True,

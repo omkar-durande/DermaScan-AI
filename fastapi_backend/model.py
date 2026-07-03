@@ -896,22 +896,16 @@ def predict_image(model, ood_model, image_path, thresholds,
                   device="cpu", use_tta=True):
     """
     Full inference pipeline:
-      Gate 1 — binary OOD classifier     → reject if not skin
+      Gate 1 — binary OOD classifier     → warn if not skin but do not reject
       Disease model + optional TTA
-      Gate 2 — confidence/entropy check  → reject if uncertain
+      Gate 2 — confidence/entropy check  → warn if uncertain but do not reject
     Returns a dict with disease, confidence, all_scores, is_skin.
     """
     img_size = thresholds["img_size"]
     image    = Image.open(image_path).convert("RGB")
 
-    # Gate 1
-    if not ood_binary_check(ood_model, image, device):
-        return {
-            "disease"   : "NOT_SKIN", "confidence": 0.0,
-            "all_scores": {n: 0.0 for n in CLASS_NAMES},
-            "is_skin"   : False,
-            "message"   : "Rejected: image does not appear to be a skin lesion.",
-        }
+    # Gate 1 check
+    is_skin_check = ood_binary_check(ood_model, image, device)
 
     tf_list = get_tta_transforms(img_size) if use_tta else [
         transforms.Compose([
@@ -928,24 +922,25 @@ def predict_image(model, ood_model, image_path, thresholds,
             all_probs.append(torch.softmax(model(tensor), dim=1)[0])
     probs = torch.stack(all_probs).mean(0)
 
-    # Gate 2
-    if not threshold_check(probs, thresholds["conf"], thresholds["entropy"]):
-        return {
-            "disease"   : "NOT_SKIN",
-            "confidence": round(probs.max().item(), 4),
-            "all_scores": {n: round(probs[i].item(), 4)
-                           for i, n in enumerate(CLASS_NAMES)},
-            "is_skin"   : False,
-            "message"   : "Rejected: model confidence too low for a diagnosis.",
-        }
+    # Gate 2 check
+    confident = threshold_check(probs, thresholds["conf"], thresholds["entropy"])
 
     top_idx = probs.argmax().item()
+    
+    warnings = []
+    if not is_skin_check:
+        warnings.append("Warning: image does not appear to be a skin lesion.")
+    if not confident:
+        warnings.append("Warning: model confidence is low.")
+    warning_msg = " | ".join(warnings) if warnings else None
+
     return {
         "disease"   : CLASS_NAMES[top_idx],
         "confidence": round(probs[top_idx].item(), 4),
         "all_scores": {n: round(probs[i].item(), 4)
                        for i, n in enumerate(CLASS_NAMES)},
         "is_skin"   : True,
+        "message"   : warning_msg,
     }
 # ─────────────────────────────────────────────
 # 14. SINGLETON MODEL HOLDER
@@ -1010,17 +1005,8 @@ class SkinDiseaseModel:
             "Tinea / Fungal Infection": "Fungal"
         }
 
-        # Gate 1 — binary OOD check
-        if not ood_binary_check(self.ood_model, image, self.device):
-            return {
-                "predicted_class": "OOD",
-                "disease_name": "Out of Domain / Not Skin",
-                "severity": "low",
-                "confidence": 0.0,
-                "all_scores": {MAP_LONG_TO_SHORT.get(n, n): 0.0 for n in CLASS_NAMES},
-                "is_skin": False,
-                "message": "Rejected: image does not appear to be a skin lesion.",
-            }
+        # Run binary OOD check to see if it is skin
+        is_skin_check = ood_binary_check(self.ood_model, image, self.device)
 
         img_size = self.thresholds["img_size"]
         tf_list = get_tta_transforms(img_size)
@@ -1032,24 +1018,20 @@ class SkinDiseaseModel:
                 all_probs.append(torch.softmax(self.model(tensor), dim=1)[0])
         probs = torch.stack(all_probs).mean(0)
 
-        # Gate 2 — confidence/entropy threshold check
-        if not threshold_check(probs, self.thresholds["conf"], self.thresholds["entropy"]):
-            top_idx = probs.argmax().item()
-            top_class = CLASS_NAMES[top_idx]
-            info = CLASS_INFO.get(top_class, {"full_name": top_class, "severity": "moderate"})
-            return {
-                "predicted_class": "UNCERTAIN",
-                "disease_name": "Uncertain / Low Confidence",
-                "severity": "low",
-                "confidence": round(probs[top_idx].item(), 4),
-                "all_scores": {MAP_LONG_TO_SHORT.get(n, n): round(probs[i].item(), 4) for i, n in enumerate(CLASS_NAMES)},
-                "is_skin": False,
-                "message": f"Rejected: model confidence too low for a diagnosis. Most likely: {info['full_name']} ({probs[top_idx].item():.1%})",
-            }
+        # Run confidence/entropy threshold check
+        confident = threshold_check(probs, self.thresholds["conf"], self.thresholds["entropy"])
 
         top_idx = probs.argmax().item()
         top_class = CLASS_NAMES[top_idx]
         info = CLASS_INFO.get(top_class, {"full_name": top_class, "severity": "moderate"})
+
+        # Build warnings if any, but do not reject the image
+        warnings = []
+        if not is_skin_check:
+            warnings.append("Warning: image does not appear to be a skin lesion.")
+        if not confident:
+            warnings.append("Warning: model confidence is low.")
+        warning_msg = " | ".join(warnings) if warnings else None
 
         return {
             "predicted_class": MAP_LONG_TO_SHORT.get(top_class, top_class),
@@ -1061,6 +1043,7 @@ class SkinDiseaseModel:
                 for i, name in enumerate(CLASS_NAMES)
             },
             "is_skin": True,
+            "message": warning_msg,
         }
 
 
